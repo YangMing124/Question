@@ -2,7 +2,7 @@
     <div id="design">
         <div id="header">
             <router-link to="/show" exact>
-            <input type="button" id="achieve" value="完成编辑"></router-link>
+            <input type="button" id="achieve" value="完成编辑" @click="sub"></router-link>
         </div>
         <div id="footer">
             <div id="content">
@@ -13,8 +13,9 @@
                 <div id="form_zone">
                     <h3 id="question">本调查用于调查高校在校生对社会满意度</h3>
                     <el-form :model="formdata" ref="formdata" label-width="100px" id="form_content">
-                        <el-form-item label-width=auto v-for="(list,index) in formdata.Lists" :key='index'>
-                            <span class="firsttitle">{{list.title}}</span>
+                        <el-form-item label-width=auto v-for="(list,index) in formdata.Lists" :key='index' 
+                        :class="['changes', list.isActive ? 'changes-active' :'changes-normal']">
+                            <p class="firsttitle">{{list.title}}</p>
                             <span  @click="addEle(index)" class="add" >在此题后插入新题</span>
                             <el-button @click="up(index)" class="up">上移</el-button>
                             <el-button @click="down(index)" class="down">下移</el-button>
@@ -27,7 +28,7 @@
                                 <div class="labels">{{ it.label }}</div>
                             </div>
                             <div v-show="!list.show" class="hide">
-                                <textarea class="textare" v-model="list.rtitle" placeholder="请输入要添加的内容"  style="width:50%;"/>
+                                <textarea id="contentsarea" @input="sizecontrol(list)" class="textare" v-model="list.rtitle" placeholder="请输入要添加的内容"  style="width:50%;"/>
                                 <div v-for="it in list.radios" class="radioall">
                                     <label><input type="radio"><input type="text" v-model="it.label"></label>
                                     <span class="choicedel" @click="delans(index)" style="cursor:pointer;margin-left:20px;color:rgb(157,157,157)">删除</span>
@@ -55,6 +56,7 @@ export default {
                 {
                     title:"请输入问题",
                     show:true,
+                    isActive:false,
                     rtitle:"请输入问题",
                     radios:[
                         {   
@@ -68,6 +70,26 @@ export default {
         }
     },
     methods:{
+        // saveProblem:function(){
+        //     for(let i=0;i<this.formdata.Lists.length;i++)
+        //     {
+        //         var option = {};
+        //         for(let j=0;j<this.formdata.Lists[i].radios.length;j++){
+        //             option[this.formdata.Lists[i].radios[j].value]=this.formdata.Lists[i].radios[j].label;
+        //         }
+        //         this.$axios({
+        //             methods:"post",
+        //             url:"http://localhost:8080/problem/saveProblem",
+        //             data:{
+        //                 prblemName:this.formdata.Lists[i].title,
+        //                 problemDsc:this.formdata.Lists[i].rtitle,
+        //                 option:option
+        //             }
+        //         }).then((res)=>{
+        //             console.log("data");
+        //         })
+        //     }
+        // },
         addEle:function(index) {
             // var c=0;
             var obj={title:"请输入问题",show: true,rtitle:"请输入问题",
@@ -118,20 +140,36 @@ export default {
             }
         },
         EdiEle:function(list){
+            list.isActive=true;
             if(list.show==false)
                 return;
+            list.rtitle=list.title;
             list.show = !list.show;
         },
         oked:function(list){
+            list.isActive=false;
+            list.title=list.rtitle;
+            list.rtitle="请输入问题";
             list.show = !list.show;
         },
         canceled:function(list,index){
+            var a=this.formdata.Lists[index].title;
+            var c=[];
+            var i=0;
+            while(list.radios)
+            {
+                c[i]=this.formdata.Lists[index].radios[i];
+                i++;
+            }
             this.formdata.Lists[index].radios.splice(index,3);
-            this.formdata.Lists[index].radios.push({
-                label: '请输入选项',
-                value: 'a',
-                status: false
-                });
+            i=0;
+            while(c)
+            {
+                this.formdata.Lists[index].radios.push(c[i]);
+                i++;
+            }
+            this.formdata.Lists[index].title=a;
+            this.formdata.Lists[index].rtitle=a;
             list.show=!list.show;
         },
         deleteEle:function(index){
@@ -162,10 +200,8 @@ export default {
                 alert("第一个无需置顶");
             else
             {
-            this.formdata.Lists.splice(0,0,this.formdata.Lists[0]); 
-            this.formdata.Lists.splice(0,0,this.formdata.Lists[index+1]);
-            this.formdata.Lists.splice(1,1); 
-            this.formdata.Lists.splice(index+2,1);
+            this.formdata.Lists.splice(0,0,this.formdata.Lists[index]);  
+            this.formdata.Lists.splice(index+1,1);
             }
              
         },
@@ -181,11 +217,12 @@ export default {
             } 
         },
         under(index){
-            if(index==this.formdata.Lists.length-1)    
+            var len=this.formdata.Lists.length;
+            if(index==len-1)    
                 alert("最后一个无需置底");
             else
             {
-                this.formdata.Lists.splice(index+3,0,this.formdata.Lists[index]); 
+                this.formdata.Lists.splice(len,0,this.formdata.Lists[index]); 
                 this.formdata.Lists.splice(index,1); 
             } 
         },
@@ -196,6 +233,18 @@ export default {
             }
             // console.log(data.value);
         },
+        sizecontrol(list){
+            var maxl=50//总长
+            var s=list.rtitle.length;
+            if(s>maxl){
+                list.rtitle=list.rtitle.substr(0,maxl);
+                alert("问题题目最长可输入50字！");
+                }
+            if(s==0){
+                alert("不可为空");
+            }
+        },
+            
     }
 }
 </script>
@@ -283,19 +332,24 @@ td{
         margin: auto;
         margin-top: 12px;
     }
-    .el-form-item{
+    .changes{
         list-style-type:none;
-        height:270px;
         width: 100%;
         margin-top: 10px;
         // background-color: chartreuse;
         border: 1px solid rgb(253,189,103);
+        &-active {
+           height:310px;
+         }
+         &-normal {
+            height:230px;
+         }
     }
     .add,.addop{
         cursor: pointer;
     }
     .add{
-        margin-left: 160px;
+        margin-left: 240px;
         font-size: 12px;
         color:red;
     }
@@ -336,6 +390,7 @@ td{
     }
     .firsttitle{
         margin-left: 30px;
+        // display: inline-block;
     }
     .up,.down,.totop,.tolast,.edit,.dele{
         font-size: 13px;
@@ -348,7 +403,8 @@ td{
         margin-top: 10px;
     }
     .adnew{
-        margin-left: 40px;
+        position: relative;
+        left: 40px;
         cursor: pointer;
         font-size: 13px;
         color: rgb(0,162,232);
